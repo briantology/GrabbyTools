@@ -1,0 +1,11 @@
+*.zip
+*.vsdx
+*.csv
+*.xls
+*.xlsx
+*.txt
+dist/
+build/
+File Holding/
+__pycache__/
+Grabby_Logs/
