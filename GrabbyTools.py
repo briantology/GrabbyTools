@@ -601,7 +601,8 @@ if selection == str(1):
                     t1 = threading.Thread(target=grabby_config_devicediscovery, args=(netdata,))
                     try:
                         # time.sleep(.1)
-                        t1.stack_size([1])
+                        # t1.stack_size([1])
+                        # TODO Figure out how to make the above command work to throttle threads
                         t1.start()
                     except:
                         print("Cannot Run Threading Operation.  Check connectivity and input file")
@@ -612,7 +613,8 @@ if selection == str(1):
     #Close failed connections txt
     failedConnections.close()
     print("\n")
-    print("The overall operation took {} seconds".format(round(end - start)))
+    #print("The overall operation took {} seconds".format(round(end - start)))
+    # TODO Figure out why threading breaks the above timer for over all performance
     logging.info('############################################PROGRAM TERMINATED############################################')
 
 elif selection == str(2):
