@@ -101,11 +101,140 @@ def grabby_README():
     print('all filenames into a list called filenames.  From there it walks each file name looking for')
     print('files that have show run in the filename and puts them into another list called hostnames.')
     print('The program then creates a dictionary with keys being hostnames and each value being another dictionary')
-    print('with subsequent keys and values that correspond to all of the details captured by the regex-based text searches such as')
-    print('device hostname, default route, ntp, dns entries and interface details.  The output is then written to a CSV with rows')
-    print('that represent each device by hostname and columns that represent the discovered data in a dynamic fashion.')
-    print('A formatted Spreadsheet is created from the finished CSV.')
+    print('with subsequent keys and values that correspond to all of the details captured by the regex-based text ')
+    print('searches such as device hostname, default route, ntp, dns entries and interface details.  The output is then')
+    print('written to a CSV with rows that represent each device by hostname and columns that represent the discovered ')
+    print('data in a dynamic fashion. A formatted Spreadsheet is created from the finished CSV.')
+    print('')
+    print('Grabby DNS Checker')
+    print('This program will check FQDNs and IP addresses in DNS to check for overlaps.')
+    print('An input file (CSV) must be present in the directory the tool is run from.')
+    print('The CSV has two columns with no headers.  First column is fqdns and the second column is IP addresses')
+    print('Sometimes this tool will appear as if it is stalling on first run, this is because of DNS server response')
+    print('Usually the program complete almost instantly after the first attempt.')
     time.sleep(60)
+
+#Define Main function
+def dns_check(row):
+    # Use Regex to parse row data
+    if re.match(fqdnRE, row):
+        # Store FQDN as variable stripping brackets, removing single quotes and forcing lowercase.
+        fqdn = ((re.search(fqdnRE, row).group(1)).strip("[]'")).lower()
+        # Store ip address as variable
+        ipadd = ((re.search(fqdnRE, row).group(4)).strip("[]'")).lower()
+        # Use built in Socket method to resolve fqdn
+        try:
+            resolved_ipaddr = socket.gethostbyname(fqdn)
+        except:
+            "There is no response for {}".format(fqdn)
+        try:
+            resolved_hostname = socket.gethostbyaddr(ipadd)
+            # Split Tuple into three variables #tuple value 1 is the A Record first returned, tuple value 2 are any additional Aliases detected
+            # tuple value 3 is IP Address
+            recordA, aliasList, originalIP = resolved_hostname
+            # Create a list of aliases to aliases to iterate over and document
+            alias_list = []
+            for i in aliasList:
+                alias_list.append(i)
+            originalIP = str(originalIP)
+            originalIP = originalIP.strip("'[]")
+            # Determine if there are aliases or duplicates returned with getipadrr, tuple 2 will be populated if so
+            if is_empty(aliasList) is True:
+                pass
+            else:
+                print("The following PTR records are resolving for {} when there should only be one - {}".format(ipadd, recordA))
+                failfile.write("\nThe following PTR records are resolving for {} when there should only be one".format(ipadd))
+                failfile.write("\n" + recordA)
+                for i in alias_list:
+                    print("-{}".format(i))
+                    failfile.write("\n" + i)
+        except:
+            "There is no response for {}".format(ipadd)
+        # Perform comparison
+        try:
+            if ipadd != resolved_ipaddr:
+                print('\nDNS-A Record mismatch for {}, it returns {} when it should be {}'.format(fqdn, resolved_ipaddr, ipadd))
+                failfile.write('\nDNS-A Record mismatch for {}, it returns {} when it should be {}'.format(fqdn, resolved_ipaddr, ipadd))
+        except:
+            pass
+
+
+def spread_sheet_creation():
+    try:
+        with open('NetOutput.csv', 'w') as outputfile:
+            # Create an object which operates like a regular writer but maps dictionaries onto Output rows
+            writer = csv.DictWriter(outputfile, fieldnames=headers, lineterminator='\n')  # define writer csv using the fieldnames columns
+            # Figure out how many headers for later XLSX Fill style operation
+            column_count = len(headers)
+            # Based on count, determine the column letter
+            maxcolumns = (get_column_letter(column_count))
+            # Write Headers
+            writer.writeheader()
+            for i, j in devicesDictionary.items():
+                print(i, j)
+                writer.writerow(j)
+    except:
+        print("Please Close the Netoutput.csv file and run the program again.")
+        sys.exit()
+    logging.info("Creating the Workbook took {} seconds".format(enddevicediscovery - startdevicediscovery))
+    logging.info('############################################PROGRAM TERMINATED############################################')
+    # open csv file
+    csv_ = csv.reader(open('./NetOutput.csv'))
+    reader = csv.reader(csv_, delimiter=",")
+    # Create an Excel workbook object
+    wb = Workbook()
+    # Create an Excel worksheet object
+    ws = wb.active
+    # Give the worksheet a title
+    ws.title = "NetOutput"
+    # Go through each row in the csv in order to copy to XLSX with OPENPYXL library
+    for ridx, row in enumerate(csv_):
+        # Openpyxl starts row numbering at 1 so adjust the row index to match
+        row_idx = ridx + 1
+        # Go through each value in the csv row
+        for cidx, val in enumerate(row):
+            # Openpyxl starts column numbering at 1 so adjust the row index to match
+            cell_idx = cidx + 1
+            # Determine the excel cell name "A1", "B2", etc..
+            # I have not seen this format used for a variable before.
+            cell_name = '{}{}'.format(get_column_letter(cidx + 1), row_idx)
+            # Create the cell object
+            cell = ws[cell_name]
+            # Set the value for the cell
+            cell.value = escape_txt(val)
+            # Set the cell format to text.  Don't ask my why @ means text but it does
+            cell.number_format = '@'
+    # Define fill object
+    HeaderFill = PatternFill(fill_type='solid', fgColor='ff0000')
+    # define font objects for later application
+    bold_font = Font(bold=True)
+    white_font = Font(color='FFFFFF', italic=False, bold=True)
+    # Loop through the cells in the first column and apply the bold formatting
+    for cell in ws['A:A']:
+        cell.font = bold_font
+    # Loop through the cells in the first row and apply the white text formatting
+    for cell in ws["1:1"]:
+        cell.font = white_font
+    # Loop through the cells in the first row and apply the border and red fill formatting
+    try:
+        for row in ws['A1':maxcolumns]:
+            for cell in row:
+                cell.fill = HeaderFill
+                cell.border = Border(top=Side(border_style='thin', color='FF000000'),
+                                     right=Side(border_style='thin', color='FF000000'),
+                                     bottom=Side(border_style='thin', color='FF000000'),
+                                     left=Side(border_style='thin', color='FF000000'))
+                # freeze pane.  Column and row.
+                c = ws['B2']
+                ws.freeze_panes = c
+    except:
+        print("Please Close the NetOutput file")
+    # print('Writing Cell: {}, Value: {}, Format: {}'.format(cell_name, cell.value, cell.number_format))
+    # Save the file
+    try:
+        wb.save(filename='NetOutput.xlsx')
+    except:
+        print("Please Close the NetOutput file")
 
 def escape_txt(txt):
     # This function detects special characters and prefixes an apostrophe for to account for excel formating.
@@ -436,84 +565,12 @@ def grabby_config_devicediscovery(netdata):
             print("Discovering details from this device took {} seconds".format(round(enddevicediscovery - startdevicediscovery)))
         except:
             print("Connection to host at Ip Address {} via Telnet failed.".format(netdata[ipaddress]))
+            # TODO Add failed things here.
+            failed_connections_list.append(netdata[ipaddress])
+
 logging.info('############################################DISCOVERING FILES IN DIRECTORY############################################')
 
-def spread_sheet_creation():
-    try:
-        with open('NetOutput.csv', 'w') as outputfile:
-            # Create an object which operates like a regular writer but maps dictionaries onto Output rows
-            writer = csv.DictWriter(outputfile, fieldnames=headers, lineterminator='\n')  # define writer csv using the fieldnames columns
-            # Figure out how many headers for later XLSX Fill style operation
-            column_count = len(headers)
-            # Based on count, determine the column letter
-            maxcolumns = (get_column_letter(column_count))
-            # Write Headers
-            writer.writeheader()
-            for i, j in devicesDictionary.items():
-                print(i, j)
-                writer.writerow(j)
-    except:
-        print("Please Close the Netoutput.csv file and run the program again.")
-        sys.exit()
-    logging.info("Creating the Workbook took {} seconds".format(enddevicediscovery - startdevicediscovery))
-    logging.info('############################################PROGRAM TERMINATED############################################')
-    # open csv file
-    csv_ = csv.reader(open('./NetOutput.csv'))
-    reader = csv.reader(csv_, delimiter=",")
-    # Create an Excel workbook object
-    wb = Workbook()
-    # Create an Excel worksheet object
-    ws = wb.active
-    # Give the worksheet a title
-    ws.title = "NetOutput"
-    # Go through each row in the csv in order to copy to XLSX with OPENPYXL library
-    for ridx, row in enumerate(csv_):
-        # Openpyxl starts row numbering at 1 so adjust the row index to match
-        row_idx = ridx + 1
-        # Go through each value in the csv row
-        for cidx, val in enumerate(row):
-            # Openpyxl starts column numbering at 1 so adjust the row index to match
-            cell_idx = cidx + 1
-            # Determine the excel cell name "A1", "B2", etc..
-            # I have not seen this format used for a variable before.
-            cell_name = '{}{}'.format(get_column_letter(cidx + 1), row_idx)
-            # Create the cell object
-            cell = ws[cell_name]
-            # Set the value for the cell
-            cell.value = escape_txt(val)
-            # Set the cell format to text.  Don't ask my why @ means text but it does
-            cell.number_format = '@'
-    # Define fill object
-    HeaderFill = PatternFill(fill_type='solid', fgColor='ff0000')
-    # define font objects for later application
-    bold_font = Font(bold=True)
-    white_font = Font(color='FFFFFF', italic=False, bold=True)
-    # Loop through the cells in the first column and apply the bold formatting
-    for cell in ws['A:A']:
-        cell.font = bold_font
-    # Loop through the cells in the first row and apply the white text formatting
-    for cell in ws["1:1"]:
-        cell.font = white_font
-    # Loop through the cells in the first row and apply the border and red fill formatting
-    try:
-        for row in ws['A1':maxcolumns]:
-            for cell in row:
-                cell.fill = HeaderFill
-                cell.border = Border(top=Side(border_style='thin', color='FF000000'),
-                                     right=Side(border_style='thin', color='FF000000'),
-                                     bottom=Side(border_style='thin', color='FF000000'),
-                                     left=Side(border_style='thin', color='FF000000'))
-                # freeze pane.  Column and row.
-                c = ws['B2']
-                ws.freeze_panes = c
-    except:
-        print("Please Close the NetOutput file")
-    # print('Writing Cell: {}, Value: {}, Format: {}'.format(cell_name, cell.value, cell.number_format))
-    # Save the file
-    try:
-        wb.save(filename='NetOutput.xlsx')
-    except:
-        print("Please Close the NetOutput file")
+
  #Program start after functions are loaded
  # loop through hostnames list and initialize devicesDictionary
 
@@ -541,7 +598,8 @@ for file in filenames:
 # 1st Prompt Ask user which tools to run
 print("Input '1' to run GRABBY CONFIG which discovers details from devices defined in Netinput.csv")
 print("Input '2' to run GRABBY TEXT which creates a Workbook CSV from recently discovered files")
-print("Input '3' for README")
+print("Input '3' to run GRABBY DNS Checker which checks a CSV file of A and PTR records for overlaps or duplicates")
+print("Input '4' for README")
 selection = input("What is your selection?: ")
 
 if selection == str(1):
@@ -573,6 +631,7 @@ if selection == str(1):
     os.makedirs(newDirectory)
     os.chdir(newDirectory)
     # Open file for failed connection attempts HEY!  DO SOMETHING WITH THIS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    failed_connections_list = []
     failedConnections = open('Failed_Device_Connections.txt', 'w')
     # TODO add csv output of failed connection results.  Make this look like the input file.
     # opens the Netinput csv file
@@ -611,6 +670,9 @@ if selection == str(1):
         rownum += 1  # Loop Counter
     end = timer()
     #Close failed connections txt
+    for i in failed_connections_list:
+        print(i)
+        failedConnections.write(i)
     failedConnections.close()
     print("\n")
     #print("The overall operation took {} seconds".format(round(end - start)))
@@ -772,6 +834,45 @@ elif selection == str(2):
         print("This operation took {} seconds".format(round(enddevicediscovery - startdevicediscovery, 9)))
 
 elif selection == str(3):
+    ###############Important Note!########################
+    # Sometimes DNS lookups can take a while to get started.  This tool may take a while when it is run the first time.
+    # Subsequent attempts to run the program should work much quicker than the first attempt.
+
+    # Define Function to check if tuple value is empty or not.
+    def is_empty(tuple_value):
+        if tuple_value:
+            # print('Structure is not empty.')
+            return False
+        else:
+            # print('Structure is empty.')
+            return True
+
+
+    fqdnRE = re.compile(r'(.+)(,)(\s)(.+)')
+
+    # Open the file. Requires two columns, first column has FQDNs and second has IP addresses
+    inputfile = open('DNSInput.csv', 'rt')
+
+    # Create CSV Reader Object
+    reader = csv.reader(inputfile)
+    failfile = open('DNSMismatch.txt', 'w')
+    for row in reader:
+        # Make row strings
+        row = str(row)
+        # Reset values
+        resolved_ipaddr = "Unknown"
+        resolved_hostname = "Unknown"
+
+        # define local sets
+        resolved_ipaddresses_set = set()
+        resolved_hostnames_set = set()
+        dns_check(row)
+
+    print("\nAll records, or, all remaining records are valid")
+
+
+
+elif selection == str(4):
     grabby_README()
 else:
     logging.error('Invalid Selection')

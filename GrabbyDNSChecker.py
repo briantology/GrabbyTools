@@ -3,6 +3,12 @@ import csv
 import re
 print("\nStarting GrabbyDNSChecker a tool by Brian Wcisel \n")
 
+###############Important Note!########################
+# Sometimes DNS lookups can take a while to get started.  This tool may take a while when it is run the first time.
+# Subsequent attempts to run the program should work much quicker than the first attempt.
+
+
+
 # Define Function to check if tuple value is empty or not.
 def is_empty(tuple_value):
     if tuple_value:
@@ -21,18 +27,9 @@ inputfile = open('DNSInput.csv', 'rt')
 reader = csv.reader(inputfile)
 failfile = open('DNSMismatch.txt', 'w')
 
-# Iterate over rows in reader
-for row in reader:
-    # Make row strings
-    row = str(row)
-    # Reset values
-    resolved_ipaddr = "Unknown"
-    resolved_hostname = "Unknown"
 
-    # define local sets
-    resolved_ipaddresses_set = set()
-    resolved_hostnames_set = set()
-
+#Define Main function
+def dns_check(row):
     # Use Regex to parse row data
     if re.match(fqdnRE, row):
         # Store FQDN as variable stripping brackets, removing single quotes and forcing lowercase.
@@ -74,5 +71,20 @@ for row in reader:
                 failfile.write('\nDNS-A Record mismatch for {}, it returns {} when it should be {}'.format(fqdn, resolved_ipaddr, ipadd))
         except:
             pass
+
+
+
+# Iterate over rows in reader
+for row in reader:
+    # Make row strings
+    row = str(row)
+    # Reset values
+    resolved_ipaddr = "Unknown"
+    resolved_hostname = "Unknown"
+
+    # define local sets
+    resolved_ipaddresses_set = set()
+    resolved_hostnames_set = set()
+    dns_check(row)
 
 print("\nAll records, or, all remaining records are valid")
