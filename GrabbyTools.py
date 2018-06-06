@@ -12,7 +12,7 @@ import os
 import time
 import sys
 import threading
-
+import socket
 
 
 # This is where Debugging occurs.
@@ -115,6 +115,7 @@ def grabby_README():
     time.sleep(60)
 
 #Define Main function
+
 def dns_check(row):
     # Use Regex to parse row data
     if re.match(fqdnRE, row):
@@ -125,8 +126,8 @@ def dns_check(row):
         # Use built in Socket method to resolve fqdn
         try:
             resolved_ipaddr = socket.gethostbyname(fqdn)
-        except:
-            "There is no response for {}".format(fqdn)
+        except socket.gaierror:
+            print("FORWARD LOOKUP FAILURE, RECORD NOT FOUND! -> {}".format(fqdn))
         try:
             resolved_hostname = socket.gethostbyaddr(ipadd)
             # Split Tuple into three variables #tuple value 1 is the A Record first returned, tuple value 2 are any additional Aliases detected
@@ -148,8 +149,8 @@ def dns_check(row):
                 for i in alias_list:
                     print("-{}".format(i))
                     failfile.write("\n" + i)
-        except:
-            "There is no response for {}".format(ipadd)
+        except socket.herror:
+            print("REVERSE LOOKUP FAILED, no PTR Records for {}".format(ipadd))
         # Perform comparison
         try:
             if ipadd != resolved_ipaddr:
@@ -157,7 +158,6 @@ def dns_check(row):
                 failfile.write('\nDNS-A Record mismatch for {}, it returns {} when it should be {}'.format(fqdn, resolved_ipaddr, ipadd))
         except:
             pass
-
 
 def spread_sheet_creation():
     try:
@@ -171,7 +171,7 @@ def spread_sheet_creation():
             # Write Headers
             writer.writeheader()
             for i, j in devicesDictionary.items():
-                print(i, j)
+                #print(i, j)
                 writer.writerow(j)
     except:
         print("Please Close the Netoutput.csv file and run the program again.")
@@ -312,7 +312,7 @@ def grabby_text_sh_ver1():
         logging.info('There is no {} SHOW VERSION file'.format(host))
         return showversion, serial, lastreloadtype, lastreloadreason, lastreloadtime, configReg, modelType, nvRam, flashRam
 
-def grabby_text_sh_int():
+def grabby_text_sh_int(macaddress):
     try:
         logging.info('Opening file {} show Interface.txt for analysis'.format(host))
         with open(host + ' show interface.txt') as showint:
@@ -321,7 +321,7 @@ def grabby_text_sh_int():
                     next_line = next(showint)
                     if re.search(showMacRE, next_line):
                         # Search for line for description RE
-                        global macaddress
+                        #global macaddress
                         # Find the macaddress!
                         rawmac = re.search(showMacRE,  next_line).group(2)
                         # Get rid of the dots in the mac address format xxxx.xxxx.xxxx  MORE DOTS!  ...okay stop dots.
@@ -400,7 +400,7 @@ def grabby_text_sh_run():
                 interfacex = re.search(interfacetypeRE, line).group(1)
                 logging.debug('regex match for {} interface - "{}"'.format(host, re.search(interfacetypeRE, line).group(1)))
                 # call function to match interface type with its mac address.  This requires the show int file
-                macccheck = grabby_text_sh_int()
+                macaddress = grabby_text_sh_int(macaddress) # TODO rename this to something that makes sense!
                 deviceLocalDictionary["MAC Address {}".format(macCounter)] = macccheck
                 logging.debug('regex MAC ADDRESS match for {} {} - "{}" '.format(host, re.search(interfacetypeRE, line).group(1), macccheck))
                 interfaceCounter += 1
@@ -834,9 +834,21 @@ elif selection == str(2):
         print("This operation took {} seconds".format(round(enddevicediscovery - startdevicediscovery, 9)))
 
 elif selection == str(3):
+
+    print('   __________  ___    ____  ______  ______  _   _______ ________  ________________ __ __________ ')
+    print('  / ____/ __ \/   |  / __ )/ __ ) \/ / __ \/ | / / ___// ____/ / / / ____/ ____/ //_// ____/ __ \ ')
+    print(' / / __/ /_/ / /| | / __  / __  |\  / / / /  |/ /\__ \/ /   / /_/ / __/ / /   / ,<  / __/ / /_/ /')
+    print('/ /_/ / _, _/ ___ |/ /_/ / /_/ / / / /_/ / /|  /___/ / /___/ __  / /___/ /___/ /| |/ /___/ _, _/')
+    print('\____/_/ |_/_/  |_/_____/_____/ /_/_____/_/ |_//____/\____/_/ /_/_____/\____/_/ |_/_____/_/ |_|')
+    print("")
+    print("")
+
+
     ###############Important Note!########################
     # Sometimes DNS lookups can take a while to get started.  This tool may take a while when it is run the first time.
     # Subsequent attempts to run the program should work much quicker than the first attempt.
+    # Remember to Flush DNS occasionally and if you need to check against a certain DNS server, statically
+    # assign the server to your network connection.
 
     # Define Function to check if tuple value is empty or not.
     def is_empty(tuple_value):
@@ -847,7 +859,7 @@ elif selection == str(3):
             # print('Structure is empty.')
             return True
 
-
+    # Regular expressions for FQDN search
     fqdnRE = re.compile(r'(.+)(,)(\s)(.+)')
 
     # Open the file. Requires two columns, first column has FQDNs and second has IP addresses
@@ -866,9 +878,11 @@ elif selection == str(3):
         # define local sets
         resolved_ipaddresses_set = set()
         resolved_hostnames_set = set()
-        dns_check(row)
+        # dns_check(row)
+        t1 = threading.Thread(target=dns_check, args=(row,))
+        t1.start()
 
-    print("\nAll records, or, all remaining records are valid")
+    # print("\nAll records, or, all remaining records are valid")
 
 
 
