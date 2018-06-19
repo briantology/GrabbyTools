@@ -15,23 +15,20 @@ import threading
 import socket
 
 
-# This is where Debugging occurs.
-selection = input("Input '1' to enable debugging or press enter to continue: ")
-print("\n")
+
 
 #Check for Log Directory if none detected, make one.
+
 if os.path.isdir('Grabby_Logs'):
     pass
 else:
     os.makedirs('Grabby_Logs')
-# Determine Logging Level
-logging_level = logging.DEBUG if selection == '1' else logging.INFO
-#Logging Global Config create log based on timeof day
-logging.basicConfig(filename=time.strftime("Grabby_Logs\%B_%d_%Y_%I.%M.%S_%p_Grabby_Log.txt"), level=logging_level, format='%(asctime)s:%(levelname)s:%(message)s')
+
+# Set Logging Level
+logging.basicConfig(filename=time.strftime("Grabby_Logs\%B_%d_%Y_%I.%M.%S_%p_Grabby_Log.txt"), level=logging.DEBUG, format='%(asctime)s:%(levelname)s:%(message)s')
 
 logging.info('############################################PROGRAM AND FUNCTION INITIALIZATION############################################')
-if selection == "1":
-    logging.info('DEBUG ENABLED')
+
 
 # Reg Ex Search Patterns for sh_run function
 hostnameRE = re.compile(r'hostname\s(.+)')
@@ -116,7 +113,7 @@ def grabby_README():
 
 #Define Main function
 
-def dns_check(row):
+def grabby_dns_check(row):
     # Use Regex to parse row data
     if re.match(fqdnRE, row):
         # Store FQDN as variable stripping brackets, removing single quotes and forcing lowercase.
@@ -127,7 +124,8 @@ def dns_check(row):
         try:
             resolved_ipaddr = socket.gethostbyname(fqdn)
         except socket.gaierror:
-            print("FORWARD LOOKUP FAILURE, RECORD NOT FOUND! -> {}".format(fqdn))
+            DNS_failure_list.append("FORWARD_LOOKUP_FAILURE_RECORD_NOT_FOUND!,{}".format(fqdn))
+            print("FORWARD_LOOKUP_FAILURE_RECORD_NOT_FOUND!,{}".format(fqdn))
         try:
             resolved_hostname = socket.gethostbyaddr(ipadd)
             # Split Tuple into three variables #tuple value 1 is the A Record first returned, tuple value 2 are any additional Aliases detected
@@ -143,21 +141,31 @@ def dns_check(row):
             if is_empty(aliasList) is True:
                 pass
             else:
-                print("The following PTR records are resolving for {} when there should only be one - {}".format(ipadd, recordA))
-                failfile.write("\nThe following PTR records are resolving for {} when there should only be one".format(ipadd))
-                failfile.write("\n" + recordA)
+                print("The_following_PTR_records_are_resolving_for_{}_when_there_should_only_be_one {}".format(ipadd, recordA))
+                DNS_failure_list.append("The_following_PTR_records_are_resolving_for_{}_when_there_should_only_be_one {}".format(ipadd, recordA))
                 for i in alias_list:
+                    DNS_failure_list.append("-{}".format(i))
                     print("-{}".format(i))
-                    failfile.write("\n" + i)
+
         except socket.herror:
-            print("REVERSE LOOKUP FAILED, no PTR Records for {}".format(ipadd))
+            print("REVERSE_LOOKUP_FAILED_no_PTR_Records_for {}".format(ipadd))
+            DNS_failure_list.append("REVERSE_LOOKUP_FAILED_no_PTR_Records_for {}".format(ipadd))
         # Perform comparison
         try:
             if ipadd != resolved_ipaddr:
-                print('\nDNS-A Record mismatch for {}, it returns {} when it should be {}'.format(fqdn, resolved_ipaddr, ipadd))
-                failfile.write('\nDNS-A Record mismatch for {}, it returns {} when it should be {}'.format(fqdn, resolved_ipaddr, ipadd))
+                print('\nDNS-A_Record_mismatch_for_{}_it_returns_{}_when_it_should_be {}'.format(fqdn, resolved_ipaddr, ipadd))
+                DNS_failure_list.append('DNS-A_Record_mismatch_for_{}_it_returns_{}_when_it_should_be {}'.format(fqdn, resolved_ipaddr, ipadd))
         except:
             pass
+
+def is_empty(tuple_value):
+    # Determine if tuple value is empty.
+    if tuple_value:
+        # print('Structure is not empty.')
+        return False
+    else:
+        # print('Structure is empty.')
+        return True
 
 def spread_sheet_creation():
     try:
@@ -312,7 +320,7 @@ def grabby_text_sh_ver1():
         logging.info('There is no {} SHOW VERSION file'.format(host))
         return showversion, serial, lastreloadtype, lastreloadreason, lastreloadtime, configReg, modelType, nvRam, flashRam
 
-def grabby_text_sh_int(macaddress):
+def grabby_text_sh_int():
     try:
         logging.info('Opening file {} show Interface.txt for analysis'.format(host))
         with open(host + ' show interface.txt') as showint:
@@ -321,7 +329,7 @@ def grabby_text_sh_int(macaddress):
                     next_line = next(showint)
                     if re.search(showMacRE, next_line):
                         # Search for line for description RE
-                        #global macaddress
+                        global macaddress
                         # Find the macaddress!
                         rawmac = re.search(showMacRE,  next_line).group(2)
                         # Get rid of the dots in the mac address format xxxx.xxxx.xxxx  MORE DOTS!  ...okay stop dots.
@@ -400,7 +408,7 @@ def grabby_text_sh_run():
                 interfacex = re.search(interfacetypeRE, line).group(1)
                 logging.debug('regex match for {} interface - "{}"'.format(host, re.search(interfacetypeRE, line).group(1)))
                 # call function to match interface type with its mac address.  This requires the show int file
-                macaddress = grabby_text_sh_int(macaddress) # TODO rename this to something that makes sense!
+                macccheck = grabby_text_sh_int() # TODO rename this to something that makes sense!
                 deviceLocalDictionary["MAC Address {}".format(macCounter)] = macccheck
                 logging.debug('regex MAC ADDRESS match for {} {} - "{}" '.format(host, re.search(interfacetypeRE, line).group(1), macccheck))
                 interfaceCounter += 1
@@ -851,13 +859,7 @@ elif selection == str(3):
     # assign the server to your network connection.
 
     # Define Function to check if tuple value is empty or not.
-    def is_empty(tuple_value):
-        if tuple_value:
-            # print('Structure is not empty.')
-            return False
-        else:
-            # print('Structure is empty.')
-            return True
+
 
     # Regular expressions for FQDN search
     fqdnRE = re.compile(r'(.+)(,)(\s)(.+)')
@@ -867,23 +869,33 @@ elif selection == str(3):
 
     # Create CSV Reader Object
     reader = csv.reader(inputfile)
-    failfile = open('DNSMismatch.txt', 'w')
+    # Define failure list to store errors.  Eventually this list is written to a Failed jobs output file
+    DNS_failure_list = []
+    # Define a list to store each thread
+    threads = []
     for row in reader:
         # Make row strings
         row = str(row)
         # Reset values
         resolved_ipaddr = "Unknown"
         resolved_hostname = "Unknown"
-
         # define local sets
         resolved_ipaddresses_set = set()
         resolved_hostnames_set = set()
-        # dns_check(row)
-        t1 = threading.Thread(target=dns_check, args=(row,))
+        # Define the damn thread
+        t1 = threading.Thread(target=grabby_dns_check, args=(row,))
+        # Start the threading process
         t1.start()
-
+        # Add individual threads to thread list.
+        threads.append(t1)
+    for proc in threads:
+        # Join Threads.  This will run all threads at once and will move on once completed.  Better than Active Count
+        t1.join()
     # print("\nAll records, or, all remaining records are valid")
-
+    with open("GrabbyDNSCheck Failures.csv", 'w', newline='') as file:
+        wr = csv.writer(file, dialect='excel')
+        for i in DNS_failure_list:
+            wr.writerow([i])
 
 
 elif selection == str(4):
