@@ -46,7 +46,6 @@ showRunRE = re.compile(r'(.+)(\s)(show run.txt)')
 showIntRE1 = re.compile(r'(.+)(\s)(show interface.txt)')
 showIntRE2 = re.compile(r'(.+)(\s)(show interface.txt)')
 
-
 # Reg Ex Search Patterns for sh_int function
 showMacRE = re.compile(r'.+(address is)\s(..............).+')
 
@@ -579,7 +578,7 @@ def grabby_config_devicediscovery(netdata):
 logging.info('############################################DISCOVERING FILES IN DIRECTORY############################################')
 
 
- #Program start after functions are loaded
+ #################################PROGRAM START after functions are loaded###############################################################
  # loop through hostnames list and initialize devicesDictionary
 
 # Define list if directories in current working directory for filename walk.  This determines which files are present
