@@ -45,6 +45,7 @@ voicePortRE = re.compile(r'voice-port (.+)')
 showRunRE = re.compile(r'(.+)(\s)(show run.txt)')
 showIntRE1 = re.compile(r'(.+)(\s)(show interface.txt)')
 showIntRE2 = re.compile(r'(.+)(\s)(show interface.txt)')
+sccpRegex = re.compile(r'sccp ccm (\d+.\d+.\d+.\d+) identifier (\d)')
 
 # Reg Ex Search Patterns for sh_int function
 showMacRE = re.compile(r'.+(address is)\s(..............).+')
@@ -110,10 +111,11 @@ def grabby_README():
     print('Usually the program complete almost instantly after the first attempt.')
     time.sleep(60)
 
-#Define Main function
+#Define Main functions
 
 def grabby_dns_check(row):
     # Use Regex to parse row data
+    # Feeds fow from input file into function for analysis
     if re.match(fqdnRE, row):
         # Store FQDN as variable stripping brackets, removing single quotes and forcing lowercase.
         fqdn = ((re.search(fqdnRE, row).group(1)).strip("[]'")).lower()
@@ -356,10 +358,14 @@ def grabby_text_sh_run():
         dnsCounter = 0
         ntpCounter = 0
         macCounter = 1
+        CCMGROUPCounter = 0
         # Define default values for these values.  It helps to even have a value of nothing for these keys.
         deviceLocalDictionary["Default Route"] = ""
         deviceLocalDictionary["Domain Name"] = ""
         deviceLocalDictionary["SNMP"] = ""
+        deviceLocalDictionary["SCCP CUCM SERVER 1"] = ""
+        deviceLocalDictionary["SCCP CUCM SERVER 2"] = ""
+        deviceLocalDictionary["SCCP CUCM SERVER 3"] = ""
         # See below at iproute search.  There must be a better way to do this.
         # search line by line in file
         for line in f:
@@ -400,6 +406,14 @@ def grabby_text_sh_run():
             # These lists are used to to store interface and voice port sub-commands for subsequent analysis
             intDetailList = []
             voiceportDetailList = []
+            if re.match(sccpRegex, line):
+                CCMGROUPCounter += 1
+                # debugging
+                test_var = re.search(sccpRegex, line).group(1)
+                print(test_var)
+                deviceLocalDictionary["SCCP CUCM SERVER " + str(CCMGROUPCounter)] = re.search(sccpRegex, line).group(1)
+
+                logging.debug('regex match for {} {} SCCP CUCM server '.format(host, re.search(sccpRegex, line).group(1)))
             # Begin Interface Parsing
             if re.match(interfacetypeRE, line):  # If Regex hit true then
                 # Define global interfacex as the match criteria for finding mac address in show interface output
@@ -573,6 +587,7 @@ def grabby_config_devicediscovery(netdata):
         except:
             print("Connection to host at Ip Address {} via Telnet failed.".format(netdata[ipaddress]))
             # TODO Add failed things here.
+            print(netdata[ipaddress])
             failed_connections_list.append(netdata[ipaddress])
 
 logging.info('############################################DISCOVERING FILES IN DIRECTORY############################################')
@@ -641,7 +656,6 @@ if selection == str(1):
     failed_connections_list = []
     failedConnections = open('Failed_Device_Connections.txt', 'w')
     # TODO add csv output of failed connection results.  Make this look like the input file.
-    # opens the Netinput csv file
     rownum = 0
     # creates the reader object from CSV file
     reader = csv.reader(inputfile)
@@ -725,6 +739,9 @@ elif selection == str(2):
         headers.append('Default Route')
         headers.append('Serial Number')
         headers.append('Software Version')
+        headers.append('SCCP CUCM SERVER 1')
+        headers.append('SCCP CUCM SERVER 2')
+        headers.append('SCCP CUCM SERVER 3')
         headers.append('Last Reload Type')
         headers.append('Last Reload Reason')
         headers.append('Config Register')
@@ -815,6 +832,9 @@ elif selection == str(2):
         headers.append('Default Route')
         headers.append('Serial Number')
         headers.append('Software Version')
+        headers.append('SCCP CUCM SERVER 1')
+        headers.append('SCCP CUCM SERVER 2')
+        headers.append('SCCP CUCM SERVER 3')
         headers.append('Last Reload Type')
         headers.append('Last Reload Reason')
         headers.append('Config Register')
