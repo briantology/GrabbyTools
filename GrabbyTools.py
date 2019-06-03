@@ -14,7 +14,7 @@ import sys
 import threading
 import socket
 
-
+#Todo Add ability to allow user to only download show run files or any of the specified files.
 
 
 #Check for Log Directory if none detected, make one.
@@ -168,6 +168,7 @@ def is_empty(tuple_value):
         # print('Structure is empty.')
         return True
 
+# Write Discovered details to CSV then convert to XLSX for pretty formatting.
 def spread_sheet_creation():
     try:
         with open('NetOutput.csv', 'w') as outputfile:
@@ -175,10 +176,11 @@ def spread_sheet_creation():
             writer = csv.DictWriter(outputfile, fieldnames=headers, lineterminator='\n')  # define writer csv using the fieldnames columns
             # Figure out how many headers for later XLSX Fill style operation
             column_count = len(headers)
-            # Based on count, determine the column letter
+            # Based on count, determine the column letter also used later for XLSX
             maxcolumns = (get_column_letter(column_count))
             # Write Headers
             writer.writeheader()
+            # This is where the
             for i, j in devicesDictionary.items():
                 #print(i, j)
                 writer.writerow(j)
@@ -409,8 +411,8 @@ def grabby_text_sh_run():
             if re.match(sccpRegex, line):
                 CCMGROUPCounter += 1
                 # debugging
-                test_var = re.search(sccpRegex, line).group(1)
-                print(test_var)
+                # test_var = re.search(sccpRegex, line).group(1)
+                # print(test_var)
                 deviceLocalDictionary["SCCP CUCM SERVER " + str(CCMGROUPCounter)] = re.search(sccpRegex, line).group(1)
 
                 logging.debug('regex match for {} {} SCCP CUCM server '.format(host, re.search(sccpRegex, line).group(1)))
@@ -726,14 +728,17 @@ elif selection == str(2):
         for host in hostnames:
             devicesDictionary[host] = grabby_text_sh_run()
         enddevicediscovery = timer()
+        #Arbitrarily apply Hostname Header as the first header in the list of headers, which are created in the next section
         headers = ["Hostname"]
         # Create Headers
-        # Determine number of headers to write to CSV
-
+        # Here we check to see the highest number of DNS entries discovered so that we can write a maximum of x headers.
+        # These are written out as DNS Server 1, DNS Server 2, ... DNS Server X in the final output
         for number in range(0, int(dnsLargest)):
             headers.append("DNS Server " + str(number + 1))
+        #Same logic as DNS, we're determining the amount of ntp server headers to write
         for number in range(0, int(ntpLargest)):
             headers.append("NTP Server " + str(number + 1))
+        # Arbitrarily create headers for our output like above with hostname
         headers.append('Domain Name')
         headers.append('SNMP')
         headers.append('Default Route')
@@ -748,6 +753,7 @@ elif selection == str(2):
         headers.append('Model Type')
         headers.append('NVRAM')
         headers.append('Flash')
+        # Header creation, based on hightest number of interface hits on any gateway discovered.
         for number in range(0, int(interfaceLargest)):
             headers.append("Interface {}".format((number + 1)))
             headers.append("Description " + str(number + 1))
@@ -755,6 +761,7 @@ elif selection == str(2):
             headers.append("Subnet Mask " + str(number + 1))
             headers.append("MAC Address " + str(number + 1))
             headers.append("Channel Group " + str(number + 1))
+        # Header creation, based on highest number of voice port hits on any gateway discovered.
         for number in range(0, int(voicePortLargest)):
             headers.append("Voice Port " + str(number + 1))
             headers.append("Voice Port Description " + str(number + 1))
