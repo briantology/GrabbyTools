@@ -1,4 +1,20 @@
 # Imports
+# Changelog
+# V1.1 - Updated code to offer fifth option to only collect show runs
+#
+#
+#
+#
+#
+#
+# TODO Log
+# Figure out why telnet fails on exception but works if DEVICE TYPE in input file is set to Cisco_ios_telnet
+# Fix Failed output logs
+
+
+
+
+
 import re
 from collections import OrderedDict
 import csv
@@ -16,6 +32,8 @@ import socket
 
 #Todo Add ability to allow user to only download show run files or any of the specified files.
 
+
+failed_connections_list = []
 
 #Check for Log Directory if none detected, make one.
 
@@ -487,7 +505,7 @@ def grabby_text_sh_run():
 
     return deviceLocalDictionary
 
-def grabby_config_devicediscovery(netdata):
+def grabby_config_devicediscovery_all_details(netdata):
     # FUNCTION DEFINITION: This function writes show commands to output files
     try:
         logging.info('Beginning Grabby Config Device Discovery')
@@ -588,8 +606,88 @@ def grabby_config_devicediscovery(netdata):
             print("Discovering details from this device took {} seconds".format(round(enddevicediscovery - startdevicediscovery)))
         except:
             print("Connection to host at Ip Address {} via Telnet failed.".format(netdata[ipaddress]))
+            print("Try updating the input file IOS type to read 'cisco_ios_telnet' and rerun.  Errors may be misleading for telnet operation")
             # TODO Add failed things here.
-            print(netdata[ipaddress])
+            # print('Except')
+            # print(netdata[ipaddress])
+            failed_connections_list.append(netdata[ipaddress])
+            # print(failed_connections_list)
+
+
+def grabby_config_devicediscovery_show_run_only(netdata):
+    # FUNCTION DEFINITION: This function writes show commands to output files
+    try:
+        logging.info('Beginning Grabby Config Device Discovery')
+        # Import Timing
+        from timeit import default_timer as timer
+        # Define performance timer
+        startdevicediscovery = timer()
+        print("\n")
+        logging.info("Attempting to connect to {} in order to build Show Run Outputs".format(netdata[ipaddress]))
+        print("Attempting to connect to {} in order to build Show Run Outputs".format(netdata[ipaddress]))
+        # SSH Connection Tools from Netmiko library
+        from netmiko import ConnectHandler
+
+        # Pass data to Connection Handler
+        establish_session = ConnectHandler(device_type=netdata[devicetype], ip=netdata[ipaddress], username=netdata[username], password=netdata[password], secret=netdata[secret])
+
+        # Pass commands to CLI through existing SSH session
+        show_run = establish_session.send_command('show run')
+
+        hostname = re.search(r'hostname\s(.+)', show_run)
+        logging.info("Files for  {} successfully created ".format(hostname.group(1)))
+
+        # Create output show run text file
+        show_run_output = open(hostname.group(1) + " show run.txt", "w")
+
+
+        # Write show run text to output file
+        show_run_output.write(show_run)
+
+
+        # Close file show run file
+        show_run_output.close()
+
+
+        print("Connecting to {} via SSH was successful".format(netdata[ipaddress]))
+        logging.info("Connecting to {} via SSH was successful".format(netdata[ipaddress]))
+        # End Performance Timer
+        enddevicediscovery = timer()
+        logging.info("Discovering details from this device took {} seconds".format(round(enddevicediscovery - startdevicediscovery)))
+        print("Discovering details from this device took {} seconds".format(round(enddevicediscovery - startdevicediscovery)))
+
+    except:
+        try:
+            print("Connection to host at Ip Address {} via SSH failed, now attempting Telnet session".format(netdata[ipaddress]))
+            # Pass data to Connection Handler
+            establish_session = ConnectHandler(device_type='cisco_ios_telnet', ip=netdata[ipaddress], password=netdata[password], secret=netdata[secret])
+            # The below command is required for telnet sessions.  Netmiko sends the enable command to enter global config.
+            establish_session.enable()
+            # Pass commands to CLI through existing SSH session
+            show_run = establish_session.send_command('show run')
+
+
+            # Create output show run text file
+            show_run_output = open(hostname.group(1) + " show run.txt", "w")
+
+            # Write show run text to output file
+            show_run_output.write(show_run)
+
+            # Close file show run file
+            show_run_output.close()
+
+
+            print("Connecting to {} via Telnet was successful".format(netdata[ipaddress]))
+            logging.info("Connecting to {} via Telnet was successful".format(netdata[ipaddress]))
+            # End Performance Timer
+            enddevicediscovery = timer()
+            logging.info("Discovering details from this device took {} seconds".format(round(enddevicediscovery - startdevicediscovery)))
+            print("Discovering details from this device took {} seconds".format(round(enddevicediscovery - startdevicediscovery)))
+        except:
+            print("Connection to host at Ip Address {} via Telnet failed.".format(netdata[ipaddress]))
+            print("Try updating the input file IOS type to read 'cisco_ios_telnet' and rerun.  Errors may be misleading for telnet operation")
+            # TODO Add failed things here.
+            # print(netdata[ipaddress])
             failed_connections_list.append(netdata[ipaddress])
 
 logging.info('############################################DISCOVERING FILES IN DIRECTORY############################################')
@@ -620,10 +718,11 @@ for file in filenames:
 
 ########################################### Ask User to Enter Selection ###########################################
 # 1st Prompt Ask user which tools to run
-print("Input '1' to run GRABBY CONFIG which discovers details from devices defined in Netinput.csv")
-print("Input '2' to run GRABBY TEXT which creates a Workbook CSV from recently discovered files")
-print("Input '3' to run GRABBY DNS Checker which checks a CSV file of A and PTR records for overlaps or duplicates")
-print("Input '4' for README")
+print("Input '1' to run GRABBY CONFIG to discovers ALL CONFIG Files from devices defined in Netinput.csv")
+print("Input '2' to run GRABBY CONFIG to discover only SHOW RUN files from devices defined in Netinput.csv")
+print("Input '3' to run GRABBY TEXT which creates a Workbook CSV from recently discovered files")
+print("Input '4' to run GRABBY DNS Checker which checks a CSV file of A and PTR records for overlaps or duplicates")
+print("Input '5' for README")
 selection = input("What is your selection?: ")
 
 if selection == str(1):
@@ -655,7 +754,92 @@ if selection == str(1):
     os.makedirs(newDirectory)
     os.chdir(newDirectory)
     # Open file for failed connection attempts HEY!  DO SOMETHING WITH THIS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    failed_connections_list = []
+    failedConnections = open('Failed_Device_Connections.txt', 'w')
+    # TODO add csv output of failed connection results.  Make this look like the input file.
+    rownum = 0
+    # creates the reader object from CSV file
+    reader = csv.reader(inputfile)
+    # Main Program Performance Timer
+    from timeit import default_timer as timer
+    startglobaltimer = timer()
+    start = timer()
+    # Defines Headers to match CSV headers
+    list_threads = []
+    for row in reader:
+        if rownum == 0:
+            header = row
+            devicetype = header.index('Device Type')
+            ipaddress = header.index('IPAddress')
+            username = header.index('Username')
+            password = header.index('Password')
+            secret = header.index('Secret')
+            discovery = header.index('Discovery')
+        else:
+            colnum = 0
+            for col in row:
+                if (colnum == header.index('Discovery')) and (col.lower() == 'y'):
+                    netdata = row
+                    t1 = threading.Thread(target=grabby_config_devicediscovery_all_details, args=(netdata,))
+                    list_threads.append(t1)
+
+                    try:
+                        # time.sleep(.1)
+                        # t1.stack_size([1])
+                        # TODO Figure out how to make the above command work to throttle threads
+                        t1.start()
+                    except:
+                        print("Cannot Run Threading Operation.  Check connectivity and input file")
+                        pass
+                colnum += 1  # Loop Counter
+        rownum += 1  # Loop Counter
+    end = timer()
+    #Close failed connections txt
+    for t in list_threads:
+        try:
+            t1.join()
+        except:
+            print("Failed interation")
+
+    # print(failed_connections_list)
+    for i in failed_connections_list:
+        failedConnections.write(i + "\n")
+    failedConnections.close()
+    print("\n")
+    #print("The overall operation took {} seconds".format(round(end - start)))
+    # TODO Figure out why threading breaks the above timer for over all performance
+    # logging.info('############################################PROGRAM TERMINATED############################################')
+    # TODO Figure out why threading breaks logging, probably related to the above threading issue as well.
+
+elif selection == str(2):
+    #
+    print("\n")
+    print("   ______ ____   ___     ____   ____ __  __   ______ ____   _   __ ______ ____ ______")
+    print("  / ____// __ \ /   |   / __ ) / __ )\ \/ /  / ____// __ \ / | / // ____//  _// ____/")
+    print(" / / __ / /_/ // /| |  / __  |/ __  | \  /  / /    / / / //  |/ // /_    / / / / __  ")
+    print("/ /_/ // _, _// ___ | / /_/ // /_/ /  / /  / /___ / /_/ // /|  // __/  _/ / / /_/ /")
+    print("\____//_/ |_|/_/  |_|/_____//_____/  /_/   \____/ \____//_/ |_//_/    /___/ \____/")
+    print("\n")
+
+
+
+    logging.info('############################################GRABBY CONFIG STARTED############################################')
+    logging.info('Option 2 Selected')
+
+    try:
+        inputfile = open('NetInput.csv', 'rt')
+    except:
+        print("\n")
+        print("ERROR - Netinput.csv was not detected please add the file and run GrabbyTools again.")
+        print("Program will terminate in ten seconds")
+        logging.info('Netinput.csv not detected.  Program terminating.')
+        time.sleep(10)
+        sys.exit()
+
+    # Creating new Directory
+    newDirectory = time.strftime("%d_%B_%Y_%I_%M_%S_Grabby_Data_Output")
+    os.makedirs(newDirectory)
+    os.chdir(newDirectory)
+    # Open file for failed connection attempts HEY!  DO SOMETHING WITH THIS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     failedConnections = open('Failed_Device_Connections.txt', 'w')
     # TODO add csv output of failed connection results.  Make this look like the input file.
     rownum = 0
@@ -680,7 +864,7 @@ if selection == str(1):
             for col in row:
                 if (colnum == header.index('Discovery')) and (col.lower() == 'y'):
                     netdata = row
-                    t1 = threading.Thread(target=grabby_config_devicediscovery, args=(netdata,))
+                    t1 = threading.Thread(target=grabby_config_devicediscovery_show_run_only, args=(netdata,))
                     try:
                         # time.sleep(.1)
                         # t1.stack_size([1])
@@ -694,7 +878,7 @@ if selection == str(1):
     end = timer()
     #Close failed connections txt
     for i in failed_connections_list:
-        print(i)
+        # print("hit 2")
         failedConnections.write(i)
     failedConnections.close()
     print("\n")
@@ -702,7 +886,7 @@ if selection == str(1):
     # TODO Figure out why threading breaks the above timer for over all performance
     logging.info('############################################PROGRAM TERMINATED############################################')
 
-elif selection == str(2):
+elif selection == str(3):
     print("\n")
     print("   __________  ___    ____  ______  __   _____________  ________")
     print("  / ____/ __ \/   |  / __ )/ __ ) \/ /  /_  __/ ____/ |/ /_  __/")
@@ -867,7 +1051,7 @@ elif selection == str(2):
         print("Creating the Workbook took {} seconds".format(round(enddevicediscovery - startdevicediscovery, 4)))
         print("This operation took {} seconds".format(round(enddevicediscovery - startdevicediscovery, 9)))
 
-elif selection == str(3):
+elif selection == str(4):
 
     print('   __________  ___    ____  ______  ______  _   _______ ________  ________________ __ __________ ')
     print('  / ____/ __ \/   |  / __ )/ __ ) \/ / __ \/ | / / ___// ____/ / / / ____/ ____/ //_// ____/ __ \ ')
@@ -923,8 +1107,7 @@ elif selection == str(3):
         for i in DNS_failure_list:
             wr.writerow([i])
 
-
-elif selection == str(4):
+elif selection == str(5):
     grabby_README()
 else:
     logging.error('Invalid Selection')
