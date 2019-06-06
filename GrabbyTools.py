@@ -799,7 +799,7 @@ if selection == str(1):
             t1.join()
         except:
             print("Failed interation")
-
+d
     # print(failed_connections_list)
     for i in failed_connections_list:
         failedConnections.write(i + "\n")
