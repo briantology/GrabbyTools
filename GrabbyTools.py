@@ -1,7 +1,7 @@
 # Imports
 # Changelog
 # V1.1 - Updated code to offer fifth option to only collect show runs
-#
+# V1.2 -
 #
 #
 #
@@ -53,7 +53,7 @@ hostnameRE = re.compile(r'hostname\s(.+)')
 snmpRE = re.compile(r'[sS]nmp-server community\s(.+)\s(.+)')
 ipDomainRE = re.compile(r'ip domain name\s(.+)')
 dnsRE = re.compile(r'ip name-server\s(.+)')
-interfacetypeRE = re.compile(r'interface\s([SGFLVP].+)')
+interfacetypeRE = re.compile(r'interface\s([TSGFLVP].+)')
 ipAddRE = re.compile(r'ip address\s(\d+\.\d+\.\d+\.\d+)\s(\d+\.\d+\.\d+\.\d+)')
 intDescRE = re.compile(r'description\s(.+)')
 ipChanGrpRE = re.compile(r'(channel-group) (\d+)(.+)')
@@ -200,7 +200,7 @@ def spread_sheet_creation():
             writer.writeheader()
             # This is where the
             for i, j in devicesDictionary.items():
-                #print(i, j)
+                # print(i, j)
                 writer.writerow(j)
     except:
         print("Please Close the Netoutput.csv file and run the program again.")
@@ -386,6 +386,7 @@ def grabby_text_sh_run():
         deviceLocalDictionary["SCCP CUCM SERVER 1"] = ""
         deviceLocalDictionary["SCCP CUCM SERVER 2"] = ""
         deviceLocalDictionary["SCCP CUCM SERVER 3"] = ""
+        deviceLocalDictionary["SCCP CUCM SERVER 4"] = ""
         # See below at iproute search.  There must be a better way to do this.
         # search line by line in file
         for line in f:
@@ -557,8 +558,8 @@ def grabby_config_devicediscovery_all_details(netdata):
         logging.info("Connecting to {} via SSH was successful".format(netdata[ipaddress]))
         # End Performance Timer
         enddevicediscovery = timer()
-        logging.info("Discovering details from this device took {} seconds".format(round(enddevicediscovery - startdevicediscovery)))
-        print("Discovering details from this device took {} seconds".format(round(enddevicediscovery - startdevicediscovery)))
+        logging.info("Discovering details from this device took {} seconds.  Check the most recent output folder for your discovered files and run GrabbyText to automatically create a workbook for further analysis.".format(round(enddevicediscovery - startdevicediscovery)))
+        print("Discovering details from this device took {} seconds.  Check the most recent output folder for your discovered files and run GrabbyText to automatically create a workbook for further analysis.".format(round(enddevicediscovery - startdevicediscovery)))
 
     except:
         try:
@@ -602,8 +603,8 @@ def grabby_config_devicediscovery_all_details(netdata):
             logging.info("Connecting to {} via Telnet was successful".format(netdata[ipaddress]))
             # End Performance Timer
             enddevicediscovery = timer()
-            logging.info("Discovering details from this device took {} seconds".format(round(enddevicediscovery - startdevicediscovery)))
-            print("Discovering details from this device took {} seconds".format(round(enddevicediscovery - startdevicediscovery)))
+            logging.info("Discovering details from this device took {} seconds.  Check the most recent output folder for your discovered files and run GrabbyText to automatically create a workbook for further analysis.".format(round(enddevicediscovery - startdevicediscovery)))
+            print("Discovering details from this device took {} seconds.  Check the most recent output folder for your discovered files and run GrabbyText to automatically create a workbook for further analysis.".format(round(enddevicediscovery - startdevicediscovery)))
         except:
             print("Connection to host at Ip Address {} via Telnet failed.".format(netdata[ipaddress]))
             print("Try updating the input file IOS type to read 'cisco_ios_telnet' and rerun.  Errors may be misleading for telnet operation")
@@ -653,8 +654,8 @@ def grabby_config_devicediscovery_show_run_only(netdata):
         logging.info("Connecting to {} via SSH was successful".format(netdata[ipaddress]))
         # End Performance Timer
         enddevicediscovery = timer()
-        logging.info("Discovering details from this device took {} seconds".format(round(enddevicediscovery - startdevicediscovery)))
-        print("Discovering details from this device took {} seconds".format(round(enddevicediscovery - startdevicediscovery)))
+        logging.info("Discovering details from this device took {} seconds.  Check the most recent output folder for your discovered files and run GrabbyText to automatically create a workbook for further analysis.".format(round(enddevicediscovery - startdevicediscovery)))
+        print("Discovering details from this device took {} seconds.  Check the most recent output folder for your discovered files and run GrabbyText to automatically create a workbook for further analysis.".format(round(enddevicediscovery - startdevicediscovery)))
 
     except:
         try:
@@ -681,8 +682,8 @@ def grabby_config_devicediscovery_show_run_only(netdata):
             logging.info("Connecting to {} via Telnet was successful".format(netdata[ipaddress]))
             # End Performance Timer
             enddevicediscovery = timer()
-            logging.info("Discovering details from this device took {} seconds".format(round(enddevicediscovery - startdevicediscovery)))
-            print("Discovering details from this device took {} seconds".format(round(enddevicediscovery - startdevicediscovery)))
+            logging.info("Discovering details from this device took {} seconds.  Check the most recent output folder for your discovered files and run GrabbyText to automatically create a workbook for further analysis.".format(round(enddevicediscovery - startdevicediscovery)))
+            print("Discovering details from this device took {} seconds.  Check the most recent output folder for your discovered files and run GrabbyText to automatically create a workbook for further analysis.".format(round(enddevicediscovery - startdevicediscovery)))
         except:
             print("Connection to host at Ip Address {} via Telnet failed.".format(netdata[ipaddress]))
             print("Try updating the input file IOS type to read 'cisco_ios_telnet' and rerun.  Errors may be misleading for telnet operation")
@@ -931,6 +932,7 @@ elif selection == str(3):
         headers.append('SCCP CUCM SERVER 1')
         headers.append('SCCP CUCM SERVER 2')
         headers.append('SCCP CUCM SERVER 3')
+        headers.append('SCCP CUCM SERVER 4')
         headers.append('Last Reload Type')
         headers.append('Last Reload Reason')
         headers.append('Config Register')
@@ -1026,6 +1028,7 @@ elif selection == str(3):
         headers.append('SCCP CUCM SERVER 1')
         headers.append('SCCP CUCM SERVER 2')
         headers.append('SCCP CUCM SERVER 3')
+        headers.append('SCCP CUCM SERVER 4')
         headers.append('Last Reload Type')
         headers.append('Last Reload Reason')
         headers.append('Config Register')
@@ -1100,7 +1103,7 @@ elif selection == str(4):
         threads.append(t1)
     for proc in threads:
         # Join Threads.  This will run all threads at once and will move on once completed.  Better than Active Count
-        t1.join()
+        proc.join()
     # print("\nAll records, or, all remaining records are valid")
     with open("GrabbyDNSCheck Failures.csv", 'w', newline='') as file:
         wr = csv.writer(file, dialect='excel')
